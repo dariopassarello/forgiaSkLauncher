@@ -123,9 +123,6 @@ public class LoginDialog extends JDialog {
 
 	@SuppressWarnings("unchecked")
 	private void initComponents() {
-		idCombo.setModel(getAccounts());
-		updateSelection();
-
 		rememberIdCheck.setBorder(BorderFactory.createEmptyBorder());
 		rememberPassCheck.setBorder(BorderFactory.createEmptyBorder());
 		idCombo.setEditable(true);
@@ -215,8 +212,14 @@ public class LoginDialog extends JDialog {
 		});
 
 		try {
+			rememberIdCheck.setSelected(readFileLines(saves).get(2).equals("true") ? true : false);
+			rememberPassCheck.setSelected(readFileLines(saves).get(3).equals("true") ? true : false);
+
 			if (rememberIdCheck.isSelected()) {
 				memeField.setText(readFileLines(saves).get(0));
+			}
+			if (rememberPassCheck.isSelected()) {
+				passwordText.setText(readFileLines(saves).get(1));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -225,112 +228,86 @@ public class LoginDialog extends JDialog {
 	}
 
 	private void popupManageMenu(Component component, int x, int y) {
-		Object selected = idCombo.getSelectedItem();
-		JPopupMenu popup = new JPopupMenu();
-		JMenuItem menuItem;
-
-		if (selected != null && selected instanceof Account) {
-			final Account account = (Account) selected;
-
-			menuItem = new JMenuItem(SharedLocale.tr("login.forgetUser"));
-			menuItem.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					accounts.remove(account);
-					Persistence.commitAndForget(accounts);
-				}
-			});
-			popup.add(menuItem);
-
-			if (!Strings.isNullOrEmpty(account.getPassword())) {
-				menuItem = new JMenuItem(SharedLocale.tr("login.forgetPassword"));
-				menuItem.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						account.setPassword(null);
-						Persistence.commitAndForget(accounts);
-					}
-				});
-				popup.add(menuItem);
-			}
-		}
-
-		menuItem = new JMenuItem(SharedLocale.tr("login.forgetAllPasswords"));
-		menuItem.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				if (SwingHelper.confirmDialog(LoginDialog.this, SharedLocale.tr("login.confirmForgetAllPasswords"),
-						SharedLocale.tr("login.forgetAllPasswordsTitle"))) {
-					accounts.forgetPasswords();
-					Persistence.commitAndForget(accounts);
-				}
-			}
-		});
-		popup.add(menuItem);
-
-		popup.show(component, x, y);
+		// Object selected = idCombo.getSelectedItem();
+		// JPopupMenu popup = new JPopupMenu();
+		// JMenuItem menuItem;
+		//
+		// if (selected != null && selected instanceof Account) {
+		// final Account account = (Account) selected;
+		//
+		// menuItem = new JMenuItem(SharedLocale.tr("login.forgetUser"));
+		// menuItem.addActionListener(new ActionListener() {
+		// @Override
+		// public void actionPerformed(ActionEvent e) {
+		// accounts.remove(account);
+		// Persistence.commitAndForget(accounts);
+		// }
+		// });
+		// popup.add(menuItem);
+		//
+		// if (!Strings.isNullOrEmpty(account.getPassword())) {
+		// menuItem = new JMenuItem(SharedLocale.tr("login.forgetPassword"));
+		// menuItem.addActionListener(new ActionListener() {
+		// @Override
+		// public void actionPerformed(ActionEvent e) {
+		// account.setPassword(null);
+		// Persistence.commitAndForget(accounts);
+		// }
+		// });
+		// popup.add(menuItem);
+		// }
+		// }
+		//
+		// menuItem = new JMenuItem(SharedLocale.tr("login.forgetAllPasswords"));
+		// menuItem.addActionListener(new ActionListener() {
+		// @Override
+		// public void actionPerformed(ActionEvent e) {
+		// if (SwingHelper.confirmDialog(LoginDialog.this,
+		// SharedLocale.tr("login.confirmForgetAllPasswords"),
+		// SharedLocale.tr("login.forgetAllPasswordsTitle"))) {
+		// accounts.forgetPasswords();
+		// Persistence.commitAndForget(accounts);
+		// }
+		// }
+		// });
+		// popup.add(menuItem);
+		//
+		// popup.show(component, x, y);
 	}
 
 	private void updateSelection() {
-		Object selected = idCombo.getSelectedItem();
-
-		if (selected != null && selected instanceof Account) {
-			Account account = (Account) selected;
-			String password = account.getPassword();
-
-			rememberIdCheck.setSelected(true);
-			if (!Strings.isNullOrEmpty(password)) {
-				rememberPassCheck.setSelected(true);
-				passwordText.setText(password);
-			} else {
-				rememberPassCheck.setSelected(false);
-			}
-		} else {
-			passwordText.setText("");
-			rememberIdCheck.setSelected(true);
-			rememberPassCheck.setSelected(false);
-		}
+		// Object selected = idCombo.getSelectedItem();
+		//
+		// if (selected != null && selected instanceof Account) {
+		// Account account = (Account) selected;
+		// String password = account.getPassword();
+		//
+		// rememberIdCheck.setSelected(true);
+		// if (!Strings.isNullOrEmpty(password)) {
+		// rememberPassCheck.setSelected(true);
+		// passwordText.setText(password);
+		// } else {
+		// rememberPassCheck.setSelected(false);
+		// }
+		// } else {
+		// passwordText.setText("");
+		// rememberIdCheck.setSelected(true);
+		// rememberPassCheck.setSelected(false);
+		// }
 	}
 
 	@SuppressWarnings("deprecation")
 	private void prepareLogin() {
-		Object selected = idCombo.getSelectedItem();
-
-		if (selected != null && selected instanceof Account) {
-			Account account = (Account) selected;
-			String password = passwordText.getText();
-
-			// if (password == null || password.isEmpty()) {
-			// SwingHelper.showErrorDialog(this, SharedLocale.tr("login.noPasswordError"),
-			// SharedLocale.tr("login.noPasswordTitle"));
-			// } else {
-			if (rememberPassCheck.isSelected()) {
-				account.setPassword(password);
-			} else {
-				account.setPassword(null);
-			}
-
-			if (rememberIdCheck.isSelected()) {
-				accounts.add(account);
-			} else {
-				accounts.remove(account);
-			}
-
-			account.setLastUsed(new Date());
-
-			Persistence.commitAndForget(accounts);
-
-			attemptLogin(account, password);
-			// }
-		} else {
-			SwingHelper.showErrorDialog(this, SharedLocale.tr("login.noLoginError"),
-					SharedLocale.tr("login.noLoginTitle"));
-		}
+		attemptLogin();
 	}
 
 	private Map<String, String> dummyProperties = Collections.emptyMap();
 
-	private void attemptLogin(Account account, String password) {
+	private void attemptLogin() {
+		setTitle("Logging in...");
+
+		String password = passwordText.getText();
+		
 		if (password == null || password.isEmpty()) {
 			setResult(new Session() {
 
@@ -381,7 +358,7 @@ public class LoginDialog extends JDialog {
 			});
 
 			try {
-				printFile(saves, memeField.getText());
+				printFile(saves, memeField.getText(), password, ""+rememberIdCheck.isSelected(), ""+rememberPassCheck.isSelected());
 			} catch (Exception e) {
 			}
 
@@ -390,9 +367,10 @@ public class LoginDialog extends JDialog {
 
 		try {
 			LoginCallable2 callable = new LoginCallable2(memeField.getText(), password);
-			setResult(callable.call());
-			printFile(saves, memeField.getText());
+ 			setResult(callable.call());
+			printFile(saves, memeField.getText(), password, ""+rememberIdCheck.isSelected(), ""+rememberPassCheck.isSelected());
 		} catch (Exception e) {
+			setTitle("Login failed.");
 			e.printStackTrace();
 		}
 	}
@@ -438,6 +416,7 @@ public class LoginDialog extends JDialog {
 				Persistence.commitAndForget(getAccounts());
 				return identities.get(0);
 			} else {
+
 				throw new AuthenticationException("Minecraft not owned",
 						SharedLocale.tr("login.minecraftNotOwnedError"));
 			}
