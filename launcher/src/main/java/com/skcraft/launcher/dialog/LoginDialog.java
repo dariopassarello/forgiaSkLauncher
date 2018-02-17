@@ -100,7 +100,7 @@ public class LoginDialog extends JDialog {
 	}
 
 	private static File saves = new File("saves.txt");
-	
+
 	public static List<String> readFileLines(File file) throws Exception {
 		List<String> lines = new ArrayList();
 		BufferedReader reader = new BufferedReader(new FileReader(file));
@@ -111,7 +111,7 @@ public class LoginDialog extends JDialog {
 		reader.close();
 		return lines;
 	}
-	
+
 	public static void printFile(File dir, String... list) throws Exception {
 		PrintWriter writer = new PrintWriter(dir);
 		for (Object o : list) {
@@ -120,7 +120,7 @@ public class LoginDialog extends JDialog {
 		}
 		writer.close();
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	private void initComponents() {
 		idCombo.setModel(getAccounts());
@@ -213,16 +213,15 @@ public class LoginDialog extends JDialog {
 				}
 			}
 		});
-		
 
 		try {
-			if(rememberIdCheck.isSelected()) {
+			if (rememberIdCheck.isSelected()) {
 				memeField.setText(readFileLines(saves).get(0));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 	}
 
 	private void popupManageMenu(Component component, int x, int y) {
@@ -380,32 +379,22 @@ public class LoginDialog extends JDialog {
 					return false;
 				}
 			});
-			
+
 			try {
 				printFile(saves, memeField.getText());
 			} catch (Exception e) {
-			}	
-			
+			}
+
 			return;
 		}
-		
-		LoginCallable callable = new LoginCallable(account, password);
-		ObservableFuture<Session> future = new ObservableFuture<Session>(launcher.getExecutor().submit(callable),
-				callable);
 
-		Futures.addCallback(future, new FutureCallback<Session>() {
-			@Override
-			public void onSuccess(Session result) {
-				setResult(result);
-			}
-
-			@Override
-			public void onFailure(Throwable t) {
-			}
-		}, SwingExecutor.INSTANCE);
-
-		ProgressDialog.showProgress(this, future, SharedLocale.tr("login.loggingInTitle"), SharedLocale.tr("login.loggingInStatus"));
-		SwingHelper.addErrorDialogCallback(this, future);
+		try {
+			LoginCallable2 callable = new LoginCallable2(memeField.getText(), password);
+			setResult(callable.call());
+			printFile(saves, memeField.getText());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void setResult(Session session) {
@@ -434,6 +423,51 @@ public class LoginDialog extends JDialog {
 			LoginService service = launcher.getLoginService();
 			List<? extends Session> identities = service.login(launcher.getProperties().getProperty("agentName"),
 					account.getId(), password);
+
+			// The list of identities (profiles in Mojang terms) corresponds to whether the
+			// account
+			// owns the game, so we need to check that
+			if (identities.size() > 0) {
+				// Set offline enabled flag to true
+				Configuration config = launcher.getConfig();
+				if (!config.isOfflineEnabled()) {
+					config.setOfflineEnabled(true);
+					Persistence.commitAndForget(config);
+				}
+
+				Persistence.commitAndForget(getAccounts());
+				return identities.get(0);
+			} else {
+				throw new AuthenticationException("Minecraft not owned",
+						SharedLocale.tr("login.minecraftNotOwnedError"));
+			}
+		}
+
+		@Override
+		public double getProgress() {
+			return -1;
+		}
+
+		@Override
+		public String getStatus() {
+			return SharedLocale.tr("login.loggingInStatus");
+		}
+	}
+
+	private class LoginCallable2 implements Callable<Session>, ProgressObservable {
+		private final String account;
+		private final String password;
+
+		private LoginCallable2(String account, String password) {
+			this.account = account;
+			this.password = password;
+		}
+
+		@Override
+		public Session call() throws AuthenticationException, IOException, InterruptedException {
+			LoginService service = launcher.getLoginService();
+			List<? extends Session> identities = service.login(launcher.getProperties().getProperty("agentName"),
+					account, password);
 
 			// The list of identities (profiles in Mojang terms) corresponds to whether the
 			// account
