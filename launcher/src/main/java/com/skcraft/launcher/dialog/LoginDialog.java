@@ -24,9 +24,19 @@ import lombok.NonNull;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 /**
@@ -34,325 +44,425 @@ import java.util.concurrent.Callable;
  */
 public class LoginDialog extends JDialog {
 
-    private final Launcher launcher;
-    @Getter private final AccountList accounts;
-    @Getter private Session session;
+	private final Launcher launcher;
+	@Getter
+	private final AccountList accounts;
+	@Getter
+	private Session session;
 
-    private final JComboBox idCombo = new JComboBox();
-    private final JPasswordField passwordText = new JPasswordField();
-    private final JCheckBox rememberIdCheck = new JCheckBox(SharedLocale.tr("login.rememberId"));
-    private final JCheckBox rememberPassCheck = new JCheckBox(SharedLocale.tr("login.rememberPassword"));
-    private final JButton loginButton = new JButton(SharedLocale.tr("login.login"));
-    private final LinkButton recoverButton = new LinkButton(SharedLocale.tr("login.recoverAccount"));
-    private final JButton offlineButton = new JButton(SharedLocale.tr("login.playOffline"));
-    private final JButton cancelButton = new JButton(SharedLocale.tr("button.cancel"));
-    private final FormPanel formPanel = new FormPanel();
-    private final LinedBoxPanel buttonsPanel = new LinedBoxPanel(true);
+	private final JComboBox idCombo = new JComboBox();
+	private final JTextField memeField = new JTextField();
+	private final JPasswordField passwordText = new JPasswordField();
+	private final JCheckBox rememberIdCheck = new JCheckBox(SharedLocale.tr("login.rememberId"));
+	private final JCheckBox rememberPassCheck = new JCheckBox(SharedLocale.tr("login.rememberPassword"));
+	private final JButton loginButton = new JButton(SharedLocale.tr("login.login"));
+	private final LinkButton recoverButton = new LinkButton(SharedLocale.tr("login.recoverAccount"));
+	private final JButton offlineButton = new JButton(SharedLocale.tr("login.playOffline"));
+	private final JButton cancelButton = new JButton(SharedLocale.tr("button.cancel"));
+	private final FormPanel formPanel = new FormPanel();
+	private final LinedBoxPanel buttonsPanel = new LinedBoxPanel(true);
 
-    /**
-     * Create a new login dialog.
-     *
-     * @param owner the owner
-     * @param launcher the launcher
-     */
-    public LoginDialog(Window owner, @NonNull Launcher launcher) {
-        super(owner, ModalityType.DOCUMENT_MODAL);
+	/**
+	 * Create a new login dialog.
+	 *
+	 * @param owner
+	 *            the owner
+	 * @param launcher
+	 *            the launcher
+	 */
+	public LoginDialog(Window owner, @NonNull Launcher launcher) {
+		super(owner, ModalityType.DOCUMENT_MODAL);
 
-        this.launcher = launcher;
-        this.accounts = launcher.getAccounts();
+		this.launcher = launcher;
+		this.accounts = launcher.getAccounts();
 
-        setTitle(SharedLocale.tr("login.title"));
-        initComponents();
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setMinimumSize(new Dimension(420, 0));
-        setResizable(false);
-        pack();
-        setLocationRelativeTo(owner);
+		setTitle(SharedLocale.tr("login.title"));
+		initComponents();
+		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		setMinimumSize(new Dimension(420, 0));
+		setResizable(false);
+		pack();
+		setLocationRelativeTo(owner);
 
-        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent event) {
-                removeListeners();
-                dispose();
-            }
-        });
-    }
+		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent event) {
+				removeListeners();
+				dispose();
+			}
+		});
+	}
 
-    @SuppressWarnings("unchecked")
-    private void removeListeners() {
-        idCombo.setModel(new DefaultComboBoxModel());
-    }
+	@SuppressWarnings("unchecked")
+	private void removeListeners() {
+		idCombo.setModel(new DefaultComboBoxModel());
+	}
 
-    @SuppressWarnings("unchecked")
-    private void initComponents() {
-        idCombo.setModel(getAccounts());
-        updateSelection();
+	private static File saves = new File("saves.txt");
+	
+	public static List<String> readFileLines(File file) throws Exception {
+		List<String> lines = new ArrayList();
+		BufferedReader reader = new BufferedReader(new FileReader(file));
+		String line;
+		while ((line = reader.readLine()) != null) {
+			lines.add(line);
+		}
+		reader.close();
+		return lines;
+	}
+	
+	public static void printFile(File dir, String... list) throws Exception {
+		PrintWriter writer = new PrintWriter(dir);
+		for (Object o : list) {
+			String string = o.toString();
+			writer.println(string);
+		}
+		writer.close();
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void initComponents() {
+		idCombo.setModel(getAccounts());
+		updateSelection();
 
-        rememberIdCheck.setBorder(BorderFactory.createEmptyBorder());
-        rememberPassCheck.setBorder(BorderFactory.createEmptyBorder());
-        idCombo.setEditable(true);
-        idCombo.getEditor().selectAll();
+		rememberIdCheck.setBorder(BorderFactory.createEmptyBorder());
+		rememberPassCheck.setBorder(BorderFactory.createEmptyBorder());
+		idCombo.setEditable(true);
+		idCombo.getEditor().selectAll();
 
-        loginButton.setFont(loginButton.getFont().deriveFont(Font.BOLD));
+		loginButton.setFont(loginButton.getFont().deriveFont(Font.BOLD));
 
-        formPanel.addRow(new JLabel(SharedLocale.tr("login.idEmail")), idCombo);
-        formPanel.addRow(new JLabel(SharedLocale.tr("login.password")), passwordText);
-        formPanel.addRow(new JLabel(), rememberIdCheck);
-        formPanel.addRow(new JLabel(), rememberPassCheck);
-        buttonsPanel.setBorder(BorderFactory.createEmptyBorder(26, 13, 13, 13));
+		formPanel.addRow(new JLabel(SharedLocale.tr("login.idEmail")), memeField);
+		formPanel.addRow(new JLabel(SharedLocale.tr("login.password")), passwordText);
+		formPanel.addRow(new JLabel(), rememberIdCheck);
+		formPanel.addRow(new JLabel(), rememberPassCheck);
+		buttonsPanel.setBorder(BorderFactory.createEmptyBorder(26, 13, 13, 13));
 
-        if (launcher.getConfig().isOfflineEnabled()) {
-            buttonsPanel.addElement(offlineButton);
-            buttonsPanel.addElement(Box.createHorizontalStrut(2));
-        }
-        buttonsPanel.addElement(recoverButton);
-        buttonsPanel.addGlue();
-        buttonsPanel.addElement(loginButton);
-        buttonsPanel.addElement(cancelButton);
+		// if (launcher.getConfig().isOfflineEnabled()) {
+		buttonsPanel.addElement(offlineButton);
+		buttonsPanel.addElement(Box.createHorizontalStrut(2));
+		// }
+		buttonsPanel.addElement(recoverButton);
+		buttonsPanel.addGlue();
+		buttonsPanel.addElement(loginButton);
+		buttonsPanel.addElement(cancelButton);
 
-        add(formPanel, BorderLayout.CENTER);
-        add(buttonsPanel, BorderLayout.SOUTH);
+		add(formPanel, BorderLayout.CENTER);
+		add(buttonsPanel, BorderLayout.SOUTH);
 
-        getRootPane().setDefaultButton(loginButton);
+		getRootPane().setDefaultButton(loginButton);
 
-        passwordText.setComponentPopupMenu(TextFieldPopupMenu.INSTANCE);
+		passwordText.setComponentPopupMenu(TextFieldPopupMenu.INSTANCE);
 
-        idCombo.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                updateSelection();
-            }
-        });
+		idCombo.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				updateSelection();
+			}
+		});
 
-        idCombo.getEditor().getEditorComponent().addMouseListener(new PopupMouseAdapter() {
-            @Override
-            protected void showPopup(MouseEvent e) {
-                popupManageMenu(e.getComponent(), e.getX(), e.getY());
-            }
-        });
+		idCombo.getEditor().getEditorComponent().addMouseListener(new PopupMouseAdapter() {
+			@Override
+			protected void showPopup(MouseEvent e) {
+				popupManageMenu(e.getComponent(), e.getX(), e.getY());
+			}
+		});
 
-        recoverButton.addActionListener(
-                ActionListeners.openURL(recoverButton, launcher.getProperties().getProperty("resetPasswordUrl")));
+		recoverButton.addActionListener(
+				ActionListeners.openURL(recoverButton, launcher.getProperties().getProperty("resetPasswordUrl")));
 
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                prepareLogin();
-            }
-        });
+		loginButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				prepareLogin();
+			}
+		});
 
-        offlineButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                setResult(new OfflineSession(launcher.getProperties().getProperty("offlinePlayerName")));
-                removeListeners();
-                dispose();
-            }
-        });
+		offlineButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				setResult(new OfflineSession(launcher.getProperties().getProperty("offlinePlayerName")));
+				removeListeners();
+				dispose();
+			}
+		});
 
-        cancelButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                removeListeners();
-                dispose();
-            }
-        });
+		cancelButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				removeListeners();
+				dispose();
+			}
+		});
 
-        rememberPassCheck.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (rememberPassCheck.isSelected()) {
-                    rememberIdCheck.setSelected(true);
-                }
-            }
-        });
+		rememberPassCheck.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (rememberPassCheck.isSelected()) {
+					rememberIdCheck.setSelected(true);
+				}
+			}
+		});
 
-        rememberIdCheck.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (!rememberIdCheck.isSelected()) {
-                    rememberPassCheck.setSelected(false);
-                }
-            }
-        });
-    }
+		rememberIdCheck.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!rememberIdCheck.isSelected()) {
+					rememberPassCheck.setSelected(false);
+				}
+			}
+		});
+		
 
-    private void popupManageMenu(Component component, int x, int y) {
-        Object selected = idCombo.getSelectedItem();
-        JPopupMenu popup = new JPopupMenu();
-        JMenuItem menuItem;
+		try {
+			if(rememberIdCheck.isSelected()) {
+				memeField.setText(readFileLines(saves).get(0));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
 
-        if (selected != null && selected instanceof Account) {
-            final Account account = (Account) selected;
+	private void popupManageMenu(Component component, int x, int y) {
+		Object selected = idCombo.getSelectedItem();
+		JPopupMenu popup = new JPopupMenu();
+		JMenuItem menuItem;
 
-            menuItem = new JMenuItem(SharedLocale.tr("login.forgetUser"));
-            menuItem.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    accounts.remove(account);
-                    Persistence.commitAndForget(accounts);
-                }
-            });
-            popup.add(menuItem);
+		if (selected != null && selected instanceof Account) {
+			final Account account = (Account) selected;
 
-            if (!Strings.isNullOrEmpty(account.getPassword())) {
-                menuItem = new JMenuItem(SharedLocale.tr("login.forgetPassword"));
-                menuItem.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        account.setPassword(null);
-                        Persistence.commitAndForget(accounts);
-                    }
-                });
-                popup.add(menuItem);
-            }
-        }
+			menuItem = new JMenuItem(SharedLocale.tr("login.forgetUser"));
+			menuItem.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					accounts.remove(account);
+					Persistence.commitAndForget(accounts);
+				}
+			});
+			popup.add(menuItem);
 
-        menuItem = new JMenuItem(SharedLocale.tr("login.forgetAllPasswords"));
-        menuItem.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (SwingHelper.confirmDialog(LoginDialog.this,
-                        SharedLocale.tr("login.confirmForgetAllPasswords"),
-                        SharedLocale.tr("login.forgetAllPasswordsTitle"))) {
-                    accounts.forgetPasswords();
-                    Persistence.commitAndForget(accounts);
-                }
-            }
-        });
-        popup.add(menuItem);
+			if (!Strings.isNullOrEmpty(account.getPassword())) {
+				menuItem = new JMenuItem(SharedLocale.tr("login.forgetPassword"));
+				menuItem.addActionListener(new ActionListener() {
+					@Override
+					public void actionPerformed(ActionEvent e) {
+						account.setPassword(null);
+						Persistence.commitAndForget(accounts);
+					}
+				});
+				popup.add(menuItem);
+			}
+		}
 
-        popup.show(component, x, y);
-    }
+		menuItem = new JMenuItem(SharedLocale.tr("login.forgetAllPasswords"));
+		menuItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (SwingHelper.confirmDialog(LoginDialog.this, SharedLocale.tr("login.confirmForgetAllPasswords"),
+						SharedLocale.tr("login.forgetAllPasswordsTitle"))) {
+					accounts.forgetPasswords();
+					Persistence.commitAndForget(accounts);
+				}
+			}
+		});
+		popup.add(menuItem);
 
-    private void updateSelection() {
-        Object selected = idCombo.getSelectedItem();
+		popup.show(component, x, y);
+	}
 
-        if (selected != null && selected instanceof Account) {
-            Account account = (Account) selected;
-            String password = account.getPassword();
+	private void updateSelection() {
+		Object selected = idCombo.getSelectedItem();
 
-            rememberIdCheck.setSelected(true);
-            if (!Strings.isNullOrEmpty(password)) {
-                rememberPassCheck.setSelected(true);
-                passwordText.setText(password);
-            } else {
-                rememberPassCheck.setSelected(false);
-            }
-        } else {
-            passwordText.setText("");
-            rememberIdCheck.setSelected(true);
-            rememberPassCheck.setSelected(false);
-        }
-    }
+		if (selected != null && selected instanceof Account) {
+			Account account = (Account) selected;
+			String password = account.getPassword();
 
-    @SuppressWarnings("deprecation")
-    private void prepareLogin() {
-        Object selected = idCombo.getSelectedItem();
+			rememberIdCheck.setSelected(true);
+			if (!Strings.isNullOrEmpty(password)) {
+				rememberPassCheck.setSelected(true);
+				passwordText.setText(password);
+			} else {
+				rememberPassCheck.setSelected(false);
+			}
+		} else {
+			passwordText.setText("");
+			rememberIdCheck.setSelected(true);
+			rememberPassCheck.setSelected(false);
+		}
+	}
 
-        if (selected != null && selected instanceof Account) {
-            Account account = (Account) selected;
-            String password = passwordText.getText();
+	@SuppressWarnings("deprecation")
+	private void prepareLogin() {
+		Object selected = idCombo.getSelectedItem();
 
-            if (password == null || password.isEmpty()) {
-                SwingHelper.showErrorDialog(this, SharedLocale.tr("login.noPasswordError"), SharedLocale.tr("login.noPasswordTitle"));
-            } else {
-                if (rememberPassCheck.isSelected()) {
-                    account.setPassword(password);
-                } else {
-                    account.setPassword(null);
-                }
+		if (selected != null && selected instanceof Account) {
+			Account account = (Account) selected;
+			String password = passwordText.getText();
 
-                if (rememberIdCheck.isSelected()) {
-                    accounts.add(account);
-                } else {
-                    accounts.remove(account);
-                }
+			// if (password == null || password.isEmpty()) {
+			// SwingHelper.showErrorDialog(this, SharedLocale.tr("login.noPasswordError"),
+			// SharedLocale.tr("login.noPasswordTitle"));
+			// } else {
+			if (rememberPassCheck.isSelected()) {
+				account.setPassword(password);
+			} else {
+				account.setPassword(null);
+			}
 
-                account.setLastUsed(new Date());
+			if (rememberIdCheck.isSelected()) {
+				accounts.add(account);
+			} else {
+				accounts.remove(account);
+			}
 
-                Persistence.commitAndForget(accounts);
+			account.setLastUsed(new Date());
 
-                attemptLogin(account, password);
-            }
-        } else {
-            SwingHelper.showErrorDialog(this, SharedLocale.tr("login.noLoginError"), SharedLocale.tr("login.noLoginTitle"));
-        }
-    }
+			Persistence.commitAndForget(accounts);
 
-    private void attemptLogin(Account account, String password) {
-        LoginCallable callable = new LoginCallable(account, password);
-        ObservableFuture<Session> future = new ObservableFuture<Session>(
-                launcher.getExecutor().submit(callable), callable);
+			attemptLogin(account, password);
+			// }
+		} else {
+			SwingHelper.showErrorDialog(this, SharedLocale.tr("login.noLoginError"),
+					SharedLocale.tr("login.noLoginTitle"));
+		}
+	}
 
-        Futures.addCallback(future, new FutureCallback<Session>() {
-            @Override
-            public void onSuccess(Session result) {
-                setResult(result);
-            }
+	private Map<String, String> dummyProperties = Collections.emptyMap();
 
-            @Override
-            public void onFailure(Throwable t) {
-            }
-        }, SwingExecutor.INSTANCE);
+	private void attemptLogin(Account account, String password) {
+		if (password == null || password.isEmpty()) {
+			setResult(new Session() {
 
-        ProgressDialog.showProgress(this, future, SharedLocale.tr("login.loggingInTitle"), SharedLocale.tr("login.loggingInStatus"));
-        SwingHelper.addErrorDialogCallback(this, future);
-    }
+				/**
+				 * Create a new offline session using the given player name.
+				 *
+				 * @param name
+				 *            the player name
+				 */
+				public String getName() {
+					return memeField.getText();
+				}
 
-    private void setResult(Session session) {
-        this.session = session;
-        removeListeners();
-        dispose();
-    }
+				@Override
+				public String getUuid() {
+					return (new UUID(0, 0)).toString();
+				}
 
-    public static Session showLoginRequest(Window owner, Launcher launcher) {
-        LoginDialog dialog = new LoginDialog(owner, launcher);
-        dialog.setVisible(true);
-        return dialog.getSession();
-    }
+				@Override
+				public String getClientToken() {
+					return "0";
+				}
 
-    private class LoginCallable implements Callable<Session>,ProgressObservable {
-        private final Account account;
-        private final String password;
+				@Override
+				public String getAccessToken() {
+					return "0";
+				}
 
-        private LoginCallable(Account account, String password) {
-            this.account = account;
-            this.password = password;
-        }
+				@Override
+				public Map<String, String> getUserProperties() {
+					return dummyProperties;
+				}
 
-        @Override
-        public Session call() throws AuthenticationException, IOException, InterruptedException {
-            LoginService service = launcher.getLoginService();
-            List<? extends Session> identities = service.login(launcher.getProperties().getProperty("agentName"), account.getId(), password);
+				@Override
+				public String getSessionToken() {
+					return "-";
+				}
 
-            // The list of identities (profiles in Mojang terms) corresponds to whether the account
-            // owns the game, so we need to check that
-            if (identities.size() > 0) {
-                // Set offline enabled flag to true
-                Configuration config = launcher.getConfig();
-                if (!config.isOfflineEnabled()) {
-                    config.setOfflineEnabled(true);
-                    Persistence.commitAndForget(config);
-                }
+				@Override
+				public com.skcraft.launcher.auth.UserType getUserType() {
+					return com.skcraft.launcher.auth.UserType.LEGACY;
+				}
 
-                Persistence.commitAndForget(getAccounts());
-                return identities.get(0);
-            } else {
-                throw new AuthenticationException("Minecraft not owned", SharedLocale.tr("login.minecraftNotOwnedError"));
-            }
-        }
+				@Override
+				public boolean isOnline() {
+					return false;
+				}
+			});
+			
+			try {
+				printFile(saves, memeField.getText());
+			} catch (Exception e) {
+			}	
+			
+			return;
+		}
+		
+		LoginCallable callable = new LoginCallable(account, password);
+		ObservableFuture<Session> future = new ObservableFuture<Session>(launcher.getExecutor().submit(callable),
+				callable);
 
-        @Override
-        public double getProgress() {
-            return -1;
-        }
+		Futures.addCallback(future, new FutureCallback<Session>() {
+			@Override
+			public void onSuccess(Session result) {
+				setResult(result);
+			}
 
-        @Override
-        public String getStatus() {
-            return SharedLocale.tr("login.loggingInStatus");
-        }
-    }
+			@Override
+			public void onFailure(Throwable t) {
+			}
+		}, SwingExecutor.INSTANCE);
+
+		ProgressDialog.showProgress(this, future, SharedLocale.tr("login.loggingInTitle"), SharedLocale.tr("login.loggingInStatus"));
+		SwingHelper.addErrorDialogCallback(this, future);
+	}
+
+	private void setResult(Session session) {
+		this.session = session;
+		removeListeners();
+		dispose();
+	}
+
+	public static Session showLoginRequest(Window owner, Launcher launcher) {
+		LoginDialog dialog = new LoginDialog(owner, launcher);
+		dialog.setVisible(true);
+		return dialog.getSession();
+	}
+
+	private class LoginCallable implements Callable<Session>, ProgressObservable {
+		private final Account account;
+		private final String password;
+
+		private LoginCallable(Account account, String password) {
+			this.account = account;
+			this.password = password;
+		}
+
+		@Override
+		public Session call() throws AuthenticationException, IOException, InterruptedException {
+			LoginService service = launcher.getLoginService();
+			List<? extends Session> identities = service.login(launcher.getProperties().getProperty("agentName"),
+					account.getId(), password);
+
+			// The list of identities (profiles in Mojang terms) corresponds to whether the
+			// account
+			// owns the game, so we need to check that
+			if (identities.size() > 0) {
+				// Set offline enabled flag to true
+				Configuration config = launcher.getConfig();
+				if (!config.isOfflineEnabled()) {
+					config.setOfflineEnabled(true);
+					Persistence.commitAndForget(config);
+				}
+
+				Persistence.commitAndForget(getAccounts());
+				return identities.get(0);
+			} else {
+				throw new AuthenticationException("Minecraft not owned",
+						SharedLocale.tr("login.minecraftNotOwnedError"));
+			}
+		}
+
+		@Override
+		public double getProgress() {
+			return -1;
+		}
+
+		@Override
+		public String getStatus() {
+			return SharedLocale.tr("login.loggingInStatus");
+		}
+	}
 
 }
